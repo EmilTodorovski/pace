@@ -1,4 +1,5 @@
 import { CalendarEvent, OverlapGroups } from "./types";
+import { groupBy } from "lodash";
 
 //TODO write proper doc
 /**
@@ -10,24 +11,28 @@ export const groupByOverlaps = (events: CalendarEvent[]) => {
   if (events.length === 0) {
     return [];
   }
-  let eventsSorted = events.sort((a, b) => a.start - b.start);
-  let groups: OverlapGroups = [];
 
-  eventsSorted.forEach((event) => {
-    let lastGroupIndex = groups.length - 1;
-    if (lastGroupIndex < 0) {
-      startNewGroup(groups, event);
-    } else {
-      const overlaps = overlapInGroup(groups[lastGroupIndex].events, event);
-      if (overlaps) {
-        addInLastGroup(groups, event);
-      } else {
+  const groupedByEvents = groupBy(events, "date");
+
+  return Object.entries(groupedByEvents).map(([key, eventsInADate]) => {
+    let eventsSorted = eventsInADate.sort((a, b) => a.start - b.start);
+    let groups: OverlapGroups = [];
+
+    eventsSorted.forEach((event) => {
+      let lastGroupIndex = groups.length - 1;
+      if (lastGroupIndex < 0) {
         startNewGroup(groups, event);
+      } else {
+        const overlaps = overlapInGroup(groups[lastGroupIndex].events, event);
+        if (overlaps) {
+          addInLastGroup(groups, event);
+        } else {
+          startNewGroup(groups, event);
+        }
       }
-    }
+    });
+    return { date: key, groups: groups };
   });
-
-  return groups;
 };
 
 const addInLastGroup = (groups: OverlapGroups, newEvent: CalendarEvent) => {
